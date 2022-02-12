@@ -5,8 +5,9 @@
   "license": "MIT",
   "author": "Paulo Wuéliton <paulo.wueliton@hotmail.com>",
   "scripts": {
+    "tsc": "tsc",
     "dev": "ts-node-dev --exit-child --transpile-only --ignore-watch node_modules src/server.ts",
-    "start": "tsc && node src/server.js"
+    "start": "npm run tsc && node src/server.js"
   },
   "devDependencies": {
     "@types/express": "^4.17.13",
