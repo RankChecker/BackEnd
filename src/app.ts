@@ -1,7 +1,6 @@
 import express, { NextFunction, Request, response, Response } from "express";
 import { createServer, Server } from "http";
 import { FindWordsController } from "./modules/rankWords/useCases/findWords/FindWordsController";
-import { routes } from "./routes";
 import AppSocket from "./services/AppSocket";
 
 class App {
@@ -18,7 +17,8 @@ class App {
 
   createApp() {
     this.app = express();
-    this.app.get("/", this.findWordsController.handle());
+    this.app.get("/", (req, res) => res.json({ message: "RankChecker" }));
+    this.app.get("/search", this.findWordsController.handle());
     // this.app.use(routes);
     this.app.use(
       (err: Error, req: Request, res: Response, next: NextFunction) => {
