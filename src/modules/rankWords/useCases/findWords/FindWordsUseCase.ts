@@ -76,8 +76,9 @@ export class FindWordsUseCase {
         );
 
         if (this.#request) {
-          this.#request.app.locals.countPerPage++;
-          this.#request.app.locals.lastSearch = new Date();
+          let count = this.#request.app.get("countPerPage");
+          this.#request.app.set("countPerPage", count++);
+          this.#request.app.set("lastSearch", new Date());
         }
 
         if (wordSearch.position !== -1) {
@@ -87,9 +88,10 @@ export class FindWordsUseCase {
         } else {
           if (+page === +word.links.length - 1) {
             const data = {
-              position: "Not founded",
+              position: null,
               keyword: word.keyword,
-              page: "Not founded",
+              page: null,
+              status: false,
             };
 
             this.#request?.app.get("socketIo").emit("searchStatus", data);
@@ -178,6 +180,7 @@ export class FindWordsUseCase {
       position,
       keyword,
       page,
+      status: true,
     };
   }
 

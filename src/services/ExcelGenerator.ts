@@ -11,14 +11,14 @@ class ExcelGenerator {
   workbook = new ExcelJS.Workbook();
   worksheet = this.workbook.addWorksheet("Resultados");
 
-  generate(client: string, site: string, words: Words[]) {
+  generate(client?: string, site?: string, words?: Words[]) {
     this.worksheet.columns = [
       { header: "Palavra Chave", key: "keyword" },
       { header: "Página", key: "page" },
       { header: "Posição", key: "position" },
     ];
 
-    words.forEach(({ keyword, page, position }) => {
+    words?.forEach(({ keyword, page, position }) => {
       this.worksheet.addRow({ keyword, page, position });
     });
   }
@@ -26,7 +26,8 @@ class ExcelGenerator {
   async export() {
     const filepath = path.join(__dirname, "../../", "report", "report.xlsx");
     await this.workbook.xlsx.writeFile(filepath);
-    return filepath;
+    const buffer = await this.workbook.xlsx.writeBuffer();
+    return buffer;
   }
 }
 
