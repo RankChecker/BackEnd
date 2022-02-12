@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "main": "src/server.ts",
   "license": "MIT",
+  "author": "Paulo Wuéliton <paulo.wueliton@hotmail.com>",
   "scripts": {
-    "dev": "ts-node-dev --exit-child --transpile-only --ignore-watch node_modules src/server.ts"
+    "dev": "ts-node-dev --exit-child --transpile-only --ignore-watch node_modules src/server.ts",
+    "start": "tsc && node src/server.js"
   },
   "devDependencies": {
     "@types/express": "^4.17.13",
@@ -31,5 +33,8 @@
     "puppeteer-extra": "^3.2.3",
     "puppeteer-extra-plugin-recaptcha": "^3.5.0",
     "striptags": "^3.2.0"
+  },
+  "engines": {
+    "node": "14.x"
   }
 }
