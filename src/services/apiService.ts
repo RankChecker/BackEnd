@@ -10,9 +10,5 @@ export const ApiService = axios.create({
     "Content-type": "UTF-8",
     "User-Agent": "giraffe",
   },
-  proxy: {
-    host: "169.57.157.148",
-    port: 8123,
-  },
   responseType: "arraybuffer",
 });

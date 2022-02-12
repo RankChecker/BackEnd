@@ -121,10 +121,13 @@ export class FindWordsUseCase {
           this.checkIfHasNoPassedOneMinute(req)
         ) {
           req.app.locals.countPerPage = 0;
-          await this.sleep(63000);
+          await this.sleep(1000 * 60 * 2);
         }
 
         const buffer = await this.getWordInGoogle(link);
+
+        if (!buffer?.length) return {};
+
         const decodedHTML = iconv.decode(buffer, "ISO-8859-1");
         const mainComponent = this.getMainComponent(decodedHTML);
         const wordSearch = await this.searchKeyWord(
@@ -154,8 +157,14 @@ export class FindWordsUseCase {
   }
 
   async getWordInGoogle(link: string) {
-    const response = await ApiService.get(link);
-    return response.data;
+    try {
+      const response = await ApiService.get(link);
+      return response.data;
+    } catch (err) {
+      console.log(
+        "Erro ao executar consulta, por favor, tente novamente mais tarde"
+      );
+    }
   }
 
   getMainComponent(buffer: any) {
