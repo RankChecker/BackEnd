@@ -6,6 +6,7 @@ import MailSend from "../../../../services/MailSend";
 import AdminZip from "adm-zip";
 import fs from "fs";
 import path from "path";
+import { resolveContent } from "nodemailer/lib/shared";
 
 interface IKeyWord {
   keyword: string;
@@ -47,11 +48,14 @@ export class FindWordsUseCase {
   async execute() {
     const endpoints = this.createEndpoints(this.words);
     this.setKeywordsListStatus(this.words);
-    await this.generatePages(endpoints, this.url);
+    const generated = await this.generatePages(endpoints, this.url);
+
+    if (!generated) return false;
     this.#request?.app.set("searchStatus", {
       message: "Nenhuma busca sendo realizada no momento.",
     });
     this.emit("result", { message: "Pesquisa finalizada com sucesso." });
+    return true;
   }
 
   private emit(id: string, message: any) {
@@ -154,7 +158,9 @@ export class FindWordsUseCase {
     }
 
     this.#request?.app.set("runing", false);
-    await this.sendReport();
+    const sendReport = await this.sendReport();
+    if (sendReport) return true;
+    return false;
   }
 
   private async getWordInGoogle(link: string) {
@@ -244,6 +250,7 @@ export class FindWordsUseCase {
     await this.engine?.close();
     this.page = undefined;
     this.engine = undefined;
+    return true;
   }
 
   private async sendReport() {
@@ -259,13 +266,16 @@ export class FindWordsUseCase {
       Buffer.from(buffer),
       zipBuffer
     );
-    if (!response)
-      return this.emit("error", {
+    if (!response) {
+      this.emit("error", {
         message: "E-mail não enviado, contate o suporte.",
       });
-    else
-      return this.emit("email", {
+      return false;
+    } else {
+      this.emit("email", {
         message: `E-mail enviado com sucesso para wueliton.horacio@gmail.com.`,
       });
+      return true;
+    }
   }
 }

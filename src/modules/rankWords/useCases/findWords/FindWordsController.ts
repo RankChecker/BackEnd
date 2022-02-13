@@ -20,7 +20,10 @@ export class FindWordsController {
 
     const findWordsUseCase = new FindWordsUseCase(req, client, url, keywords);
     req.app.set("runing", true);
-    findWordsUseCase.execute();
+    findWordsUseCase.execute().then((response) => {
+      if (response) console.log("Busca de palavras finalizada com sucesso.");
+      else console.log("Erro ao realizar a busca.");
+    });
 
     res.json({
       message: "Realizando busca",
