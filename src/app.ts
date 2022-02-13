@@ -2,6 +2,9 @@ import express, { NextFunction, Request, response, Response } from "express";
 import { createServer, Server } from "http";
 import { FindWordsController } from "./modules/rankWords/useCases/findWords/FindWordsController";
 import AppSocket from "./services/AppSocket";
+import AdminZip from "adm-zip";
+import fs from "fs";
+import path from "path";
 
 class App {
   app?: express.Application;

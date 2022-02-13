@@ -9,7 +9,12 @@ class MailSend {
     },
   });
 
-  async sendmail(to: string, subject: string, buffer?: Buffer) {
+  async sendmail(
+    to: string,
+    subject: string,
+    buffer?: Buffer,
+    zipFiles?: Buffer
+  ) {
     let options: SendMailOptions = {
       from: process.env.GMAIL_ACCOUNT,
       to,
@@ -26,6 +31,18 @@ class MailSend {
             content: buffer,
             contentType:
               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          },
+        ],
+      };
+
+    if (zipFiles)
+      options = {
+        ...options,
+        attachments: [
+          ...(options.attachments ?? []),
+          {
+            filename: "palavras-chave.zip",
+            content: zipFiles,
           },
         ],
       };
