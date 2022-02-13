@@ -48,7 +48,10 @@ export class FindWordsUseCase {
     const endpoints = this.createEndpoints(this.words);
     this.setKeywordsListStatus(this.words);
     await this.generatePages(endpoints, this.url);
-    process.exit(0);
+    this.#request?.app.set("searchStatus", {
+      message: "Nenhuma busca sendo realizada no momento.",
+    });
+    this.emit("result", { message: "Pesquisa finalizada com sucesso." });
   }
 
   private emit(id: string, message: any) {
@@ -152,10 +155,6 @@ export class FindWordsUseCase {
 
     this.#request?.app.set("runing", false);
     await this.sendReport();
-    this.#request?.app.set("searchStatus", {
-      message: "Nenhuma busca sendo realizada no momento.",
-    });
-    this.emit("result", { message: "Pesquisa finalizada com sucesso." });
   }
 
   private async getWordInGoogle(link: string) {
