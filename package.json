@@ -7,7 +7,7 @@
   "scripts": {
     "tsc": "tsc",
     "dev": "ts-node-dev --exit-child --transpile-only --ignore-watch node_modules src/server.ts",
-    "start": "forever stasrt dist/server.js",
+    "start": "forever start dist/server.js",
     "postinstall": "tsc"
   },
   "devDependencies": {
