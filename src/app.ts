@@ -22,6 +22,9 @@ class App {
     this.app = express();
     this.app.use(express.json());
     this.app.get("/", (req, res) => res.json({ message: "RankChecker" }));
+    this.app.get("/status", (req, res) =>
+      res.json(req.app.get("searchStatus"))
+    );
     this.app.get("/search", this.findWordsController.handle());
 
     this.app.use(
@@ -45,7 +48,9 @@ class App {
     this.app.set("countPerPage", 0);
     this.app.set("lastSearch", null);
     this.app.set("runing", false);
-    this.app.set("searchStatus", {});
+    this.app.set("searchStatus", {
+      message: "Nenhuma busca sendo realizada no momento.",
+    });
   }
 
   private sockets(): void {

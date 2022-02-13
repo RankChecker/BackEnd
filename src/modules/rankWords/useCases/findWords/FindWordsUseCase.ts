@@ -146,6 +146,9 @@ export class FindWordsUseCase {
     }
 
     this.#request?.app.set("runing", false);
+    this.#request?.app.set("searchStatus", {
+      message: "Nenhuma busca sendo realizada no momento.",
+    });
     this.emit("result", { message: "Pesquisa finalizada com sucesso." });
     return await this.sendReport();
   }
