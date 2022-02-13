@@ -34,7 +34,6 @@ class MailSend {
       await this.#transporter.sendMail(options);
       return true;
     } catch (err) {
-      console.log(err);
       return false;
     }
   }
