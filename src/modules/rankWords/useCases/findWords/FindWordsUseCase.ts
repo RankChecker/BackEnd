@@ -76,8 +76,10 @@ export class FindWordsUseCase {
     }));
 
     this.#request?.app.set("searchStatus", {
-      keywords: keyList,
+      client: this.client,
+      url: this.url,
       status: 0,
+      keywords: keyList,
       count: keyList.length,
     });
   }
