@@ -101,7 +101,7 @@ export class FindWordsUseCase {
   private async generatePages(words: IKeyWord[], url: string) {
     for (const [index, word] of words.entries()) {
       for (const [page, link] of word.links.entries()) {
-        await this.sleep(10);
+        await this.sleep(15);
         const buffer = await this.getWordInGoogle(link);
         const percent = (100 / words.length) * (index + 1);
 
