@@ -1,4 +1,4 @@
-import ExcelJS, { Workbook } from "exceljs";
+import ExcelJS from "exceljs";
 import path from "path";
 
 interface Words {

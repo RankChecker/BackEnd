@@ -1,4 +1,4 @@
-import express, { Request } from "express";
+import express from "express";
 import { Server } from "http";
 import socketIo from "socket.io";
 

@@ -2,9 +2,7 @@ import express, { NextFunction, Request, response, Response } from "express";
 import { createServer, Server } from "http";
 import { FindWordsController } from "./modules/rankWords/useCases/findWords/FindWordsController";
 import AppSocket from "./services/AppSocket";
-import AdminZip from "adm-zip";
-import fs from "fs";
-import path from "path";
+import cors from "cors";
 
 class App {
   app?: express.Application;
@@ -21,6 +19,7 @@ class App {
   createApp() {
     this.app = express();
     this.app.use(express.json());
+    this.app.use(cors());
     this.app.get("/", (req, res) => res.json({ message: "RankChecker" }));
     this.app.get("/status", (req, res) =>
       res.json(req.app.get("searchStatus"))
