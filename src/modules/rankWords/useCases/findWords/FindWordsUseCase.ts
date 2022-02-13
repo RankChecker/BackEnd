@@ -168,6 +168,10 @@ export class FindWordsUseCase {
       timeout: 0,
     });
     if (response?.status() !== 200) {
+      this.#request?.app.set("runing", false);
+      this.#request?.app.set("searchStatus", {
+        message: "Nenhuma busca sendo realizada no momento.",
+      });
       this.emit("error", {
         message: "Erro ao buscar, tente novamente mais tarde",
       });
