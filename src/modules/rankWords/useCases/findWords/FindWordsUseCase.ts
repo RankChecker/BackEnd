@@ -83,6 +83,8 @@ export class FindWordsUseCase {
       keywords: keyList,
       count: keyList.length,
     });
+
+    this.emit("searchStatus", this.getSearchStatus());
   }
 
   private editKeywordsListStatus(keyword: IKeyWordStatus, percent: number) {
