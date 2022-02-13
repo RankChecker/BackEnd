@@ -24,7 +24,7 @@ class App {
     this.app.get("/status", (req, res) =>
       res.json(req.app.get("searchStatus"))
     );
-    this.app.get("/search", this.findWordsController.handle());
+    this.app.get("/search", this.findWordsController.handle);
 
     this.app.use(
       (err: Error, req: Request, res: Response, next: NextFunction) => {
