@@ -101,7 +101,7 @@ export class FindWordsUseCase {
   private async generatePages(words: IKeyWord[], url: string) {
     for (const [index, word] of words.entries()) {
       for (const [page, link] of word.links.entries()) {
-        await this.sleep(10);
+        await this.sleep(15);
         const buffer = await this.getWordInGoogle(link);
         const percent = (100 / words.length) * (index + 1);
 
@@ -146,6 +146,9 @@ export class FindWordsUseCase {
     }
 
     this.#request?.app.set("runing", false);
+    this.#request?.app.set("searchStatus", {
+      message: "Nenhuma busca sendo realizada no momento.",
+    });
     this.emit("result", { message: "Pesquisa finalizada com sucesso." });
     return await this.sendReport();
   }
