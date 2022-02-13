@@ -30,6 +30,8 @@ class App {
       req.app.set("searchStatus", {
         message: "Nenhuma busca sendo realizada no momento.",
       });
+
+      res.json({ message: "Status de busca reiniciado." });
     });
     this.app.get("/search", this.findWordsController.handle);
 
