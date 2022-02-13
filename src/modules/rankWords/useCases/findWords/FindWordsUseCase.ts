@@ -157,7 +157,10 @@ export class FindWordsUseCase {
 
   private async getWordInGoogle(link: string) {
     await this.closeBrowser();
-    if (!this.engine) this.engine = await puppeteer.launch();
+    if (!this.engine)
+      this.engine = await puppeteer.launch({
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      });
     if (!this.page) this.page = await this.engine?.newPage();
 
     const response = await this.page?.goto(link, {
