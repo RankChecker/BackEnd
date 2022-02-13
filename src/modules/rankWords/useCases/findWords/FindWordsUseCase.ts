@@ -48,6 +48,7 @@ export class FindWordsUseCase {
     const endpoints = this.createEndpoints(this.words);
     this.setKeywordsListStatus(this.words);
     await this.generatePages(endpoints, this.url);
+    process.exit(0);
   }
 
   private emit(id: string, message: any) {
