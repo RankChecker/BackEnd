@@ -24,6 +24,13 @@ class App {
     this.app.get("/status", (req, res) =>
       res.json(req.app.get("searchStatus"))
     );
+    this.app.get("/restart", (req, res) => {
+      req.app.set("lastSearch", null);
+      req.app.set("runing", false);
+      req.app.set("searchStatus", {
+        message: "Nenhuma busca sendo realizada no momento.",
+      });
+    });
     this.app.get("/search", this.findWordsController.handle);
 
     this.app.use(
