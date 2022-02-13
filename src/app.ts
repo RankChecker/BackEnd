@@ -17,9 +17,10 @@ class App {
 
   createApp() {
     this.app = express();
+    this.app.use(express.json());
     this.app.get("/", (req, res) => res.json({ message: "RankChecker" }));
     this.app.get("/search", this.findWordsController.handle());
-    // this.app.use(routes);
+
     this.app.use(
       (err: Error, req: Request, res: Response, next: NextFunction) => {
         if (err instanceof Error) {
@@ -38,9 +39,10 @@ class App {
 
   private serverValues() {
     if (!this.app) return;
-    this.app.locals.countPerPage = 0;
-    this.app.locals.lastSearch = null;
+    this.app.set("countPerPage", 0);
+    this.app.set("lastSearch", null);
     this.app.set("runing", false);
+    this.app.set("searchStatus", {});
   }
 
   private sockets(): void {
