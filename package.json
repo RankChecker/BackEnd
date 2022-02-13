@@ -7,11 +7,12 @@
   "scripts": {
     "tsc": "tsc",
     "dev": "ts-node-dev --exit-child --transpile-only --ignore-watch node_modules src/server.ts",
-    "start": "forever start dist/server.js",
+    "start": "node dist/server.js",
     "postinstall": "tsc"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.4.34",
+    "@types/bull": "^3.15.7",
     "@types/cors": "^2.8.12",
     "@types/express": "^4.17.13",
     "@types/jquery": "^3.5.13",
@@ -26,12 +27,12 @@
     "@types/socket.io": "^3.0.2",
     "adm-zip": "^0.5.9",
     "axios": "^0.25.0",
+    "bull": "^4.5.1",
     "cors": "^2.8.5",
     "dotenv": "^16.0.0",
     "exceljs": "^4.3.0",
     "express": "^4.17.2",
     "express-async-errors": "^3.1.1",
-    "forever": "^4.0.3",
     "jsdom": "^19.0.0",
     "nodemailer": "^6.7.2",
     "puppeteer": "^13.2.0",

@@ -3,12 +3,14 @@ import { createServer, Server } from "http";
 import { FindWordsController } from "./modules/rankWords/useCases/findWords/FindWordsController";
 import AppSocket from "./services/AppSocket";
 import cors from "cors";
+import Queue from "bull";
 
 class App {
   app?: express.Application;
   PORT = 3001;
   server?: Server;
   findWordsController = new FindWordsController();
+  queue = new Queue("wordRank");
 
   constructor() {
     this.createApp();
@@ -33,7 +35,18 @@ class App {
 
       res.json({ message: "Status de busca reiniciado." });
     });
-    this.app.get("/search", this.findWordsController.handle);
+    this.app.get("/search", (req, res) => {
+      this.queue.process(async (job, done) => {
+        console.log("Adicionado a fila");
+        await this.findWordsController.handle(req, res);
+        console.log("Fila processada");
+        done();
+      });
+
+      return res.json({
+        message: "Realizando busca",
+      });
+    });
 
     this.app.use(
       (err: Error, req: Request, res: Response, next: NextFunction) => {
