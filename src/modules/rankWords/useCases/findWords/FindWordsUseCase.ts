@@ -3,6 +3,9 @@ import { JSDOM } from "jsdom";
 import puppeteer, { Browser } from "puppeteer";
 import ExcelGenerator from "../../../../services/ExcelGenerator";
 import MailSend from "../../../../services/MailSend";
+import AdminZip from "adm-zip";
+import fs from "fs";
+import path from "path";
 
 interface IKeyWord {
   keyword: string;
@@ -10,10 +13,11 @@ interface IKeyWord {
 }
 
 interface IKeyWordStatus {
+  id?: number;
   position: number;
   keyword: string;
   page: number;
-  status: boolean;
+  status?: boolean;
 }
 
 export class FindWordsUseCase {
@@ -23,6 +27,7 @@ export class FindWordsUseCase {
   page?: puppeteer.Page;
   #request?: Request;
   client: string;
+  #keywordsZip = new AdminZip();
 
   constructor(req: Request, client: string, url: string, words: string[]) {
     this.#request = req;
@@ -35,8 +40,8 @@ export class FindWordsUseCase {
     return this.#request?.app.get("searchStatus");
   }
 
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+  private sleep(seconds: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, 1000 * seconds));
   }
 
   async execute() {
@@ -63,11 +68,11 @@ export class FindWordsUseCase {
   }
 
   private setKeywordsListStatus(keywords: string[]) {
-    const keyList = keywords.map((keyword) => ({
+    const keyList = keywords.map((keyword, index) => ({
+      id: index,
       position: -1,
       keyword: keyword,
       page: -1,
-      status: false,
     }));
 
     this.#request?.app.set("searchStatus", {
@@ -80,7 +85,9 @@ export class FindWordsUseCase {
   private editKeywordsListStatus(keyword: IKeyWordStatus, percent: number) {
     const list = this.getSearchStatus();
     const newList = list.keywords.map((keystatus: IKeyWordStatus) =>
-      keystatus.keyword === keyword.keyword ? keyword : keystatus
+      keystatus.keyword === keyword.keyword
+        ? { id: keystatus.id, ...keyword }
+        : keystatus
     );
     this.#request?.app.set("searchStatus", {
       ...list,
@@ -94,7 +101,7 @@ export class FindWordsUseCase {
   private async generatePages(words: IKeyWord[], url: string) {
     for (const [index, word] of words.entries()) {
       for (const [page, link] of word.links.entries()) {
-        await this.sleep(5000);
+        await this.sleep(10);
         const buffer = await this.getWordInGoogle(link);
         const percent = (100 / words.length) * (index + 1);
 
@@ -196,11 +203,18 @@ export class FindWordsUseCase {
         keywordItem.link.includes(url)
     );
 
-    if (position !== -1)
-      await this.page?.screenshot({
-        path: `screeshots/${keyword} - ${page}.png`,
+    if (position !== -1) {
+      const buffer = await this.page?.screenshot({
         fullPage: true,
+        type: "webp",
+        quality: 85,
       });
+      if (buffer)
+        this.#keywordsZip.addFile(
+          `screeshots/${keyword} - ${page}.webp`,
+          Buffer.from(buffer)
+        );
+    }
 
     return {
       position,
@@ -223,11 +237,13 @@ export class FindWordsUseCase {
     const words = this.getSearchStatus().keywords;
     excelWorkbook.generate(this.client, this.url, words);
     const buffer = await excelWorkbook.export();
+    const zipBuffer = this.#keywordsZip.toBuffer();
     const mail = new MailSend();
     const response = await mail.sendmail(
       "wueliton.horacio@gmail.com",
       `Seu relatório está pronto - ${this.client}`,
-      Buffer.from(buffer)
+      Buffer.from(buffer),
+      zipBuffer
     );
     if (!response)
       return this.emit("error", {
@@ -237,5 +253,12 @@ export class FindWordsUseCase {
       return this.emit("email", {
         message: `E-mail enviado com sucesso para wueliton.horacio@gmail.com.`,
       });
+  }
+
+  private async compressImages() {
+    const zipFile = new AdminZip();
+    fs.readdirSync(path.join(__dirname, "../../../../../", "")).forEach(
+      (file) => {}
+    );
   }
 }

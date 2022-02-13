@@ -11,6 +11,7 @@
     "postinstall": "tsc"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.4.34",
     "@types/express": "^4.17.13",
     "@types/jquery": "^3.5.13",
     "@types/jsdom": "^16.2.14",
@@ -22,6 +23,7 @@
     "@types/bcrypt": "^5.0.0",
     "@types/jsonwebtoken": "^8.5.8",
     "@types/socket.io": "^3.0.2",
+    "adm-zip": "^0.5.9",
     "axios": "^0.25.0",
     "dotenv": "^16.0.0",
     "exceljs": "^4.3.0",
