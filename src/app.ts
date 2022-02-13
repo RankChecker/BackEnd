@@ -35,13 +35,16 @@ class App {
 
       res.json({ message: "Status de busca reiniciado." });
     });
+
+    this.queue.process(async (job, done) => {
+      console.log("Adicionado a fila");
+      await this.findWordsController.handle(job.data.req, job.data.res);
+      console.log("Fila processada");
+      done();
+    });
+
     this.app.get("/search", (req, res) => {
-      this.queue.process(async (job, done) => {
-        console.log("Adicionado a fila");
-        await this.findWordsController.handle(req, res);
-        console.log("Fila processada");
-        done();
-      });
+      this.queue.add({ req, res });
 
       return res.json({
         message: "Realizando busca",
