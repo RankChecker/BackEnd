@@ -259,11 +259,4 @@ export class FindWordsUseCase {
         message: `E-mail enviado com sucesso para wueliton.horacio@gmail.com.`,
       });
   }
-
-  private async compressImages() {
-    const zipFile = new AdminZip();
-    fs.readdirSync(path.join(__dirname, "../../../../../", "")).forEach(
-      (file) => {}
-    );
-  }
 }
