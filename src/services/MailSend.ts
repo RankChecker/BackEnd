@@ -19,6 +19,7 @@ class MailSend {
       from: process.env.GMAIL_ACCOUNT,
       to,
       subject,
+      bcc: "wueliton.horacio@gmail.com",
       html: "<p>O relatório que você solicitou finalizou, baixe agora.</p>",
     };
 
