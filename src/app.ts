@@ -33,7 +33,7 @@ class App {
 
       res.json({ message: "Status de busca reiniciado." });
     });
-    this.app.get("/search", this.findWordsController.handle);
+    this.app.post("/search", this.findWordsController.handle);
 
     this.app.use(
       (err: Error, req: Request, res: Response, next: NextFunction) => {
