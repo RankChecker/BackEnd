@@ -261,7 +261,7 @@ export class FindWordsUseCase {
     const zipBuffer = this.#keywordsZip.toBuffer();
     const mail = new MailSend();
     const response = await mail.sendmail(
-      "wueliton.horacio@gmail.com",
+      "financeiro.conceitopub@gmail.com,bruna.conceitopub@gmail.com",
       `Seu relatório está pronto - ${this.client}`,
       Buffer.from(buffer),
       zipBuffer
