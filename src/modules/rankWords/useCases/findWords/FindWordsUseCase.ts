@@ -4,9 +4,6 @@ import puppeteer, { Browser } from "puppeteer";
 import ExcelGenerator from "../../../../services/ExcelGenerator";
 import MailSend from "../../../../services/MailSend";
 import AdminZip from "adm-zip";
-import fs from "fs";
-import path from "path";
-import { resolveContent } from "nodemailer/lib/shared";
 
 interface IKeyWord {
   keyword: string;
@@ -17,6 +14,7 @@ interface IKeyWordStatus {
   id?: number;
   position: number;
   keyword: string;
+  link: string;
   page: number;
   status?: boolean;
 }
@@ -67,10 +65,12 @@ export class FindWordsUseCase {
       keyword,
       links: Array.from(Array(5).keys()).map((key) =>
         key === 0
-          ? `https://google.com.br/search?q=${encodeURI(keyword)}`
-          : `https://google.com.br/search?q=${encodeURI(keyword)}&start=${
-              key * 10
-            }`
+          ? `https://google.com.br/search?hl=pt-BR&cr=countryBR&q=${encodeURI(
+              keyword
+            )}`
+          : `https://google.com.br/search?hl=pt-BR&cr=countryBR&q=${encodeURI(
+              keyword
+            )}&start=${key * 10}`
       ),
     }));
   }
@@ -79,6 +79,7 @@ export class FindWordsUseCase {
     const keyList = keywords.map((keyword, index) => ({
       id: index,
       position: -1,
+      link: "",
       keyword: keyword,
       page: -1,
     }));
@@ -129,6 +130,7 @@ export class FindWordsUseCase {
         const wordSearch = await this.searchKeyWord(
           buffer,
           word.keyword,
+          link,
           url,
           page
         );
@@ -147,6 +149,7 @@ export class FindWordsUseCase {
             const data = {
               position: -1,
               keyword: word.keyword,
+              link: "",
               page: -1,
               status: false,
             };
@@ -193,7 +196,13 @@ export class FindWordsUseCase {
     return data;
   }
 
-  async searchKeyWord(buffer: any, keyword: string, url: string, page: number) {
+  async searchKeyWord(
+    buffer: any,
+    keyword: string,
+    link: string,
+    url: string,
+    page: number
+  ) {
     const dom = new JSDOM(buffer);
     const document = dom.window.document;
     const headers = document.querySelectorAll("#search h3");
@@ -239,6 +248,7 @@ export class FindWordsUseCase {
     return {
       position,
       keyword,
+      link,
       page,
       status: true,
     };

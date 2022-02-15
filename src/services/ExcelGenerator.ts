@@ -4,6 +4,7 @@ import path from "path";
 interface Words {
   position: number;
   keyword: string;
+  link: string;
   page: number;
 }
 
@@ -44,9 +45,9 @@ class ExcelGenerator {
 
     this.worksheet.getRow(4).values = ["Palavra Chave", "Página", "Posição"];
 
-    words.forEach(({ keyword, page, position }) => {
+    words.forEach(({ keyword, page, link, position }) => {
       this.worksheet.addRow({
-        keyword,
+        keyword: { text: keyword, hyperlink: link },
         page: page >= 0 ? page + 1 : "Não encontrado",
         position: position >= 0 ? position + 1 : "Não encontrado",
       });
