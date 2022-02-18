@@ -1,220 +1,292 @@
 import { Request } from "express";
-import iconv from "iconv-lite";
-import moment from "moment";
-import { ApiService } from "../../../../services/apiService";
 import { JSDOM } from "jsdom";
+import puppeteer, { Browser } from "puppeteer";
+import ExcelGenerator from "../../../../services/ExcelGenerator";
+import MailSend from "../../../../services/MailSend";
+import AdminZip from "adm-zip";
 
 interface IKeyWord {
   keyword: string;
   links: string[];
 }
 
-export class FindWordsUseCase {
-  words = [
-    "Calibração detectores de gás",
-    "Comissionamento sistema alarme incêndio",
-    "Fire Lite manutenção",
-    "Global Fire Manutenção",
-    "Honeywell analytics calibração",
-    "Instalação Esser",
-    "Instalação Morley",
-    "Instalação de Notifier",
-    "Instalação PROTECTOWIRE",
-    "Instalação Simplex",
-    "Instalação Sistema alarme incêndio",
-    "Instalação sistema de combate a incêndio",
-    "Instalação sistema de supressão CO2",
-    "Janus Manutenção",
-    "Manutenção Eaton",
-    "Manutenção Esser",
-    "Manutenção Morley",
-    "Manutenção Notifier",
-    "Manutenção Preventiva Sistema Incêndio",
-    "Manutenção Simplex",
-    "MSA Calibração",
-    "Programação Sistema alarme Incêndio",
-    "Projeto Alarme de Incêndio",
-    "Projeto Sistema de Combate a Incêndio",
-    "Projeto Sistema de Supressão",
-    "Startup Sistemas de Alarme Incêndio",
-    "Telas Gráficas Sistema Alarme Incêndio",
-    "Testes Sistema Alarme Incêndio",
-    "VESDA Startup Programação",
-    "Manutenção Corretiva Sistema Incêndio",
-    "Manutenção Detector Linear Feixe",
-    "Alinhamento Detector Beam",
-    "Alinhamento Detector De Chama",
-    "Calibração Detector De Hidrogênio",
-    "Instalação Avisador Audio Visual",
-    "Projeto FM-200",
-    "Projeto Novec-1230",
-    "Sistema De Detecção UL/FM",
-    "Manutenção Detector de CO",
-    "Manutenção Detector Por Aspiração",
-    "Manutenção Detector De Alta Sensibilidade",
-    "Manutenção Sirene De Alarme De Incêndio",
-    "Manutenção Detector Multicritério",
-    "Manutenção Audio Evacuação",
-    "Manutenção Sistema Incêndio Convencional",
-    "Betta Manutenção",
-    "Equipamentos de Combate Incêndio",
-    "Instalação Acionador Manual",
-    "Instalação Alarme de Incêndio",
-    "Intelbras Manutenção",
-    "Kidde Manutenção",
-    "Manutenção Alarme de Incêndio",
-    "Manutenção Central Alarme Incêndio",
-    "Manutenção Detecção Incêndio",
-    "Manutenção Detector de Fumaça",
-    "Manutenção Painel Alarme Incêndio",
-    "Manutenção Sistema Contra Incêndio",
-    "Manutenção Sistema Incêndio Endereçável",
-    "Sistema Detecção e Alarme de Incêndio",
-    "Tecnohold Manutenção",
-    "Agente limpo manutenção",
-    "Detecção de gás calibração",
-    "Agente limpo instalação",
-    "Detector de chama manutenção",
-    "Novec-1230 manutenção",
-    "VESDA manutenção",
-    "Detecção linear de temperatura",
-    "FM-200 manutenção",
-    "Contrato sistema de incêndio",
-    "OSID manutenção",
-    "Supressão manutenção",
-    "Teste hidrostático cilindro",
-    "Water mist instalação",
-    "Proteção contra incêndio",
-    "Detecção e alarme de incêndio",
-    "Projeto SDAI",
-    "Sistema de incêndio wireless",
-    "Sistema certificado UL/FM",
-    "Sistema incêndio para CPD",
-    "Detecção de incêndio sem fio",
-  ];
-  client = "smartfire.com.br";
+interface IKeyWordStatus {
+  id?: number;
+  position: number;
+  keyword: string;
+  link: string;
+  page: number;
+  status?: boolean;
+}
 
-  async execute(req: Request) {
-    const endpoints = this.createEndpoints(this.words);
-    const word = await this.generatePages(req, endpoints, this.client);
-    return word;
+export class FindWordsUseCase {
+  words: string[] = [];
+  url: string;
+  engine?: Browser;
+  page?: puppeteer.Page;
+  #request?: Request;
+  client: string;
+  #keywordsZip = new AdminZip();
+
+  constructor(req: Request, client: string, url: string, words: string[]) {
+    this.#request = req;
+    this.url = url;
+    this.words = words;
+    this.client = client;
   }
 
-  createEndpoints(keywords: string[]) {
+  private getSearchStatus() {
+    return this.#request?.app.get("searchStatus");
+  }
+
+  private sleep(seconds: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, 1000 * seconds));
+  }
+
+  async execute() {
+    const endpoints = this.createEndpoints(this.words);
+    this.setKeywordsListStatus(this.words);
+    const generated = await this.generatePages(endpoints, this.url);
+
+    if (!generated) return false;
+    this.#request?.app.set("searchStatus", {
+      message: "Nenhuma busca sendo realizada no momento.",
+    });
+    this.emit("result", { message: "Pesquisa finalizada com sucesso." });
+    return true;
+  }
+
+  private emit(id: string, message: any) {
+    this.#request?.app.get("socketIo").sockets.emit(id, message);
+  }
+
+  private createEndpoints(keywords: string[]) {
     return keywords.map((keyword) => ({
       keyword,
       links: Array.from(Array(5).keys()).map((key) =>
         key === 0
-          ? `search?q=${encodeURI(keyword)}`
-          : `search?q=${encodeURI(keyword)}&start=${key * 10}`
+          ? `https://google.com.br/search?hl=pt-BR&cr=countryBR&q=${encodeURI(
+              keyword
+            )}`
+          : `https://google.com.br/search?hl=pt-BR&cr=countryBR&q=${encodeURI(
+              keyword
+            )}&start=${key * 10}`
       ),
     }));
   }
 
-  async generatePages(req: Request, words: IKeyWord[], client: string) {
-    const result = [];
+  private setKeywordsListStatus(keywords: string[]) {
+    const keyList = keywords.map((keyword, index) => ({
+      id: index,
+      position: -1,
+      link: "",
+      keyword: keyword,
+      page: -1,
+    }));
 
-    for (const word of words) {
+    this.#request?.app.set("searchStatus", {
+      client: this.client,
+      url: this.url,
+      status: 0,
+      keywords: keyList,
+      count: keyList.length,
+    });
+
+    this.emit("searchStatus", this.getSearchStatus());
+  }
+
+  private editKeywordsListStatus(keyword: IKeyWordStatus, percent: number) {
+    const list = this.getSearchStatus();
+    const newList = list.keywords.map((keystatus: IKeyWordStatus) =>
+      keystatus.keyword === keyword.keyword
+        ? { id: keystatus.id, ...keyword }
+        : keystatus
+    );
+    this.#request?.app.set("searchStatus", {
+      ...list,
+      status: percent,
+      keywords: newList,
+    });
+
+    this.emit("searchStatus", this.getSearchStatus());
+  }
+
+  private async generatePages(words: IKeyWord[], url: string) {
+    for (const [index, word] of words.entries()) {
       for (const [page, link] of word.links.entries()) {
-        if (
-          req.app.locals.countPerPage === 45 &&
-          this.checkIfHasNoPassedOneMinute(req)
-        ) {
-          req.app.locals.countPerPage = 0;
-          await this.sleep(63000);
-        }
-
+        await this.sleep(15);
         const buffer = await this.getWordInGoogle(link);
-        const decodedHTML = iconv.decode(buffer, "ISO-8859-1");
-        const mainComponent = this.getMainComponent(decodedHTML);
+        const percent = (100 / words.length) * (index + 1);
+
+        if (!buffer?.length)
+          return {
+            error: {
+              status: 429,
+              message:
+                "Erro ao tentar pesquisar palavras-chave, por favor, tente novamente mais tarde.",
+            },
+          };
+
         const wordSearch = await this.searchKeyWord(
-          mainComponent,
+          buffer,
           word.keyword,
-          client,
+          link,
+          url,
           page
         );
-        req.app.locals.countPerPage++;
-        req.app.locals.lastSearch = new Date();
+
+        if (this.#request) {
+          let count = this.#request.app.get("countPerPage");
+          this.#request.app.set("countPerPage", count++);
+          this.#request.app.set("lastSearch", new Date());
+        }
 
         if (wordSearch.position !== -1) {
-          result.push(wordSearch);
+          this.editKeywordsListStatus(wordSearch, percent);
           break;
         } else {
-          if (page - 1 === word.links.length)
-            result.push({
-              position: "Not founded",
+          if (+page === +word.links.length - 1) {
+            const data = {
+              position: -1,
               keyword: word.keyword,
-              page: "Not founded",
-            });
+              link: "",
+              page: -1,
+              status: false,
+            };
+
+            this.editKeywordsListStatus(data, percent);
+          }
         }
       }
     }
 
-    return result;
+    this.#request?.app.set("runing", false);
+    const sendReport = await this.sendReport();
+    if (sendReport) return true;
+    return false;
   }
 
-  async getWordInGoogle(link: string) {
-    const response = await ApiService.get(link);
-    return response.data;
-  }
+  private async getWordInGoogle(link: string) {
+    await this.closeBrowser();
+    if (!this.engine)
+      this.engine = await puppeteer.launch({
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      });
+    if (!this.page) this.page = await this.engine?.newPage();
 
-  getMainComponent(buffer: any) {
-    const mainIndex = buffer.indexOf('<div id="main">');
-    const mainLastIndex = buffer.lastIndexOf("</div>");
-    const mainContent = buffer.substring(mainIndex, mainLastIndex);
-    return mainContent;
+    const response = await this.page?.goto(link, {
+      waitUntil: "load",
+      timeout: 0,
+    });
+    if (response?.status() !== 200) {
+      this.#request?.app.set("runing", false);
+      this.#request?.app.set("searchStatus", {
+        message: "Nenhuma busca sendo realizada no momento.",
+      });
+      this.emit("error", {
+        message: "Erro ao buscar, tente novamente mais tarde",
+      });
+      return null;
+    }
+
+    const data = await this.page?.evaluate(
+      () => document.documentElement.outerHTML
+    );
+
+    return data;
   }
 
   async searchKeyWord(
     buffer: any,
     keyword: string,
-    client: string,
+    link: string,
+    url: string,
     page: number
   ) {
     const dom = new JSDOM(buffer);
     const document = dom.window.document;
-    const divs = document.querySelectorAll("#main > div");
-    const results: Element[] = [];
+    const headers = document.querySelectorAll("#search h3");
+    const results: { keywordText: string; link: string }[] = [];
 
-    divs.forEach((div) => {
-      let areAdsense = false;
-      div.querySelectorAll("span").forEach((span) => {
-        if (span.innerText?.includes("Anúncio")) areAdsense = true;
-      });
-
-      if (areAdsense) return;
-
-      const header = div.querySelector("h3")?.innerHTML;
-
-      if (header) results.push(div);
-    });
-
-    const position = results.findIndex((div) => {
+    headers.forEach((header) => {
       if (
-        div.querySelector("h3")?.innerHTML.includes(keyword) &&
-        div.querySelector("a > div")?.innerHTML.includes(client)
+        header.textContent === "As pessoas também perguntam" ||
+        header.textContent === "Víddeos"
       )
-        return true;
+        return;
+
+      const keywordText = header.textContent;
+      const link = header.closest("a");
+
+      if (keywordText && link) {
+        results.push({
+          keywordText,
+          link: link.href,
+        });
+      }
     });
 
-    console.log(position, keyword, client);
+    const position = results.findIndex(
+      (keywordItem) =>
+        keywordItem.keywordText.includes(keyword) &&
+        keywordItem.link.includes(url)
+    );
+
+    if (position !== -1) {
+      const buffer = await this.page?.screenshot({
+        fullPage: true,
+        type: "webp",
+        quality: 85,
+      });
+      if (buffer)
+        this.#keywordsZip.addFile(
+          `screeshots/${keyword} - ${page}.webp`,
+          Buffer.from(buffer)
+        );
+    }
 
     return {
       position,
       keyword,
+      link,
       page,
+      status: true,
     };
   }
 
-  checkIfHasNoPassedOneMinute(req: Request) {
-    const actualDate = new Date();
-    const end = moment(req.app.locals.lastSearch);
-    const duration = moment.duration(end.diff(actualDate));
-    const minutes = duration.asMinutes();
-    return minutes < 1;
+  private async closeBrowser() {
+    if (!this.engine && !this.page) return;
+    await this.page?.close();
+    await this.engine?.close();
+    this.page = undefined;
+    this.engine = undefined;
+    return true;
   }
 
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+  private async sendReport() {
+    const excelWorkbook = new ExcelGenerator();
+    const words = this.getSearchStatus().keywords;
+    excelWorkbook.generate(this.client, this.url, words);
+    const buffer = await excelWorkbook.export();
+    const zipBuffer = this.#keywordsZip.toBuffer();
+    const mail = new MailSend();
+    const response = await mail.sendmail(
+      "financeiro.conceitopub@gmail.com,bruna.conceitopub@gmail.com",
+      // "wueliton.horacio@gmail.com",
+      `Seu relatório está pronto - ${this.client}`,
+      Buffer.from(buffer),
+      zipBuffer
+    );
+    if (!response) {
+      this.emit("error", {
+        message: "E-mail não enviado, contate o suporte.",
+      });
+      return false;
+    } else {
+      this.emit("email", {
+        message: `E-mail enviado com sucesso para wueliton.horacio@gmail.com.`,
+      });
+      return true;
+    }
   }
 }
