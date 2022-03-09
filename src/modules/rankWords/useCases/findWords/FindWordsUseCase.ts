@@ -1,6 +1,6 @@
 import { Request } from "express";
 import { JSDOM } from "jsdom";
-import puppeteer, { Browser } from "puppeteer";
+import puppeteer, { Browser, Page } from "puppeteer";
 import ExcelGenerator from "../../../../services/ExcelGenerator";
 import MailSend from "../../../../services/MailSend";
 import AdminZip from "adm-zip";
@@ -22,17 +22,23 @@ interface IKeyWordStatus {
 export class FindWordsUseCase {
   words: string[] = [];
   url: string;
-  engine?: Browser;
   page?: puppeteer.Page;
   #request?: Request;
   client: string;
   #keywordsZip = new AdminZip();
 
-  constructor(req: Request, client: string, url: string, words: string[]) {
+  constructor(
+    page: Page | undefined,
+    req: Request,
+    client: string,
+    url: string,
+    words: string[]
+  ) {
     this.#request = req;
     this.url = url;
     this.words = words;
     this.client = client;
+    this.page = page;
   }
 
   private getSearchStatus() {
@@ -167,17 +173,6 @@ export class FindWordsUseCase {
   }
 
   private async getWordInGoogle(link: string) {
-    if (!this.engine)
-      this.engine = await puppeteer.launch({
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--single-process",
-          "--no-zygote",
-        ],
-      });
-    if (!this.page) this.page = await this.engine?.newPage();
-
     const response = await this.page?.goto(link, {
       waitUntil: "load",
       timeout: 0,
@@ -196,12 +191,6 @@ export class FindWordsUseCase {
     const data = await this.page?.evaluate(
       () => document.documentElement.outerHTML
     );
-
-    this.engine?.on("disconnected", () => console.log("Browser encerrado"));
-    await this.page?.close();
-    await this.engine?.close();
-    this.page = undefined;
-    this.engine = undefined;
 
     return data;
   }
