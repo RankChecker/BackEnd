@@ -167,7 +167,6 @@ export class FindWordsUseCase {
   }
 
   private async getWordInGoogle(link: string) {
-    await this.closeBrowser();
     if (!this.engine)
       this.engine = await puppeteer.launch({
         args: [
@@ -197,6 +196,12 @@ export class FindWordsUseCase {
     const data = await this.page?.evaluate(
       () => document.documentElement.outerHTML
     );
+
+    this.engine?.on("disconnected", () => console.log("Browser encerrado"));
+    await this.page?.close();
+    await this.engine?.close();
+    this.page = undefined;
+    this.engine = undefined;
 
     return data;
   }
@@ -257,16 +262,6 @@ export class FindWordsUseCase {
       page,
       status: true,
     };
-  }
-
-  private async closeBrowser() {
-    if (!this.engine && !this.page) return;
-    this.engine?.on("disconnected", () => console.log("Browser encerrado"));
-    await this.page?.close();
-    await this.engine?.close();
-    this.page = undefined;
-    this.engine = undefined;
-    return true;
   }
 
   private async sendReport() {
