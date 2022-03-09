@@ -170,7 +170,12 @@ export class FindWordsUseCase {
     await this.closeBrowser();
     if (!this.engine)
       this.engine = await puppeteer.launch({
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--single-process",
+          "--no-zygote",
+        ],
       });
     if (!this.page) this.page = await this.engine?.newPage();
 
@@ -256,6 +261,7 @@ export class FindWordsUseCase {
 
   private async closeBrowser() {
     if (!this.engine && !this.page) return;
+    this.engine?.on("disconnected", () => console.log("Browser encerrado"));
     await this.page?.close();
     await this.engine?.close();
     this.page = undefined;
@@ -271,8 +277,8 @@ export class FindWordsUseCase {
     const zipBuffer = this.#keywordsZip.toBuffer();
     const mail = new MailSend();
     const response = await mail.sendmail(
-      "financeiro.conceitopub@gmail.com,bruna.conceitopub@gmail.com",
-      // "wueliton.horacio@gmail.com",
+      // "financeiro.conceitopub@gmail.com,bruna.conceitopub@gmail.com",
+      "wueliton.horacio@gmail.com",
       `Seu relatório está pronto - ${this.client}`,
       Buffer.from(buffer),
       zipBuffer
