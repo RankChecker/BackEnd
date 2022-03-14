@@ -1,9 +1,10 @@
 import { Request } from "express";
 import { JSDOM } from "jsdom";
-import puppeteer, { Browser, Page } from "puppeteer";
 import ExcelGenerator from "../../../../services/ExcelGenerator";
 import MailSend from "../../../../services/MailSend";
 import AdminZip from "adm-zip";
+import { ApiService } from "../../../../services/apiService";
+import nodeHtmlToImage from "node-html-to-image";
 
 interface IKeyWord {
   keyword: string;
@@ -22,23 +23,15 @@ interface IKeyWordStatus {
 export class FindWordsUseCase {
   words: string[] = [];
   url: string;
-  page?: puppeteer.Page;
   #request?: Request;
   client: string;
   #keywordsZip = new AdminZip();
 
-  constructor(
-    page: Page | undefined,
-    req: Request,
-    client: string,
-    url: string,
-    words: string[]
-  ) {
+  constructor(req: Request, client: string, url: string, words: string[]) {
     this.#request = req;
     this.url = url;
     this.words = words;
     this.client = client;
-    this.page = page;
   }
 
   private getSearchStatus() {
@@ -120,7 +113,7 @@ export class FindWordsUseCase {
   private async generatePages(words: IKeyWord[], url: string) {
     for (const [index, word] of words.entries()) {
       for (const [page, link] of word.links.entries()) {
-        await this.sleep(15);
+        await this.sleep(20);
         const buffer = await this.getWordInGoogle(link);
         const percent = (100 / words.length) * (index + 1);
 
@@ -173,11 +166,8 @@ export class FindWordsUseCase {
   }
 
   private async getWordInGoogle(link: string) {
-    const response = await this.page?.goto(link, {
-      waitUntil: "load",
-      timeout: 0,
-    });
-    if (response?.status() !== 200) {
+    const response = await ApiService.get(link);
+    if (response.status !== 200) {
       this.#request?.app.set("runing", false);
       this.#request?.app.set("searchStatus", {
         message: "Nenhuma busca sendo realizada no momento.",
@@ -188,9 +178,7 @@ export class FindWordsUseCase {
       return null;
     }
 
-    const data = await this.page?.evaluate(
-      () => document.documentElement.outerHTML
-    );
+    const data = response.data.toString("utf8");
 
     return data;
   }
@@ -204,13 +192,13 @@ export class FindWordsUseCase {
   ) {
     const dom = new JSDOM(buffer);
     const document = dom.window.document;
-    const headers = document.querySelectorAll("#search h3");
+    const headers = document.querySelectorAll("#main h3");
     const results: { keywordText: string; link: string }[] = [];
 
     headers.forEach((header) => {
       if (
         header.textContent === "As pessoas também perguntam" ||
-        header.textContent === "Víddeos"
+        header.textContent === "Vídeos"
       )
         return;
 
@@ -232,15 +220,18 @@ export class FindWordsUseCase {
     );
 
     if (position !== -1) {
-      const buffer = await this.page?.screenshot({
-        fullPage: true,
-        type: "webp",
-        quality: 85,
+      const screenshot = await nodeHtmlToImage({
+        html: buffer,
+        type: "jpeg",
       });
-      if (buffer)
+      const screenshotToBuffer =
+        typeof screenshot === "string"
+          ? Buffer.from(screenshot)
+          : (screenshot as Buffer);
+      if (screenshot)
         this.#keywordsZip.addFile(
           `screeshots/${keyword} - ${page}.webp`,
-          Buffer.from(buffer)
+          screenshotToBuffer
         );
     }
 

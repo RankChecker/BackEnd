@@ -3,7 +3,7 @@ import { Page } from "puppeteer";
 import { FindWordsUseCase } from "./FindWordsUseCase";
 
 export class FindWordsController {
-  handle(page: Page | undefined, req: Request, res: Response) {
+  handle(req: Request, res: Response) {
     if (req.app.get("runing"))
       return res.status(409).json({
         error: "Busca em progresso",
@@ -19,13 +19,7 @@ export class FindWordsController {
           "Requisição mal formatada, verifique os dados e tente novamente.",
       });
 
-    const findWordsUseCase = new FindWordsUseCase(
-      page,
-      req,
-      client,
-      url,
-      keywords
-    );
+    const findWordsUseCase = new FindWordsUseCase(req, client, url, keywords);
     req.app.set("runing", true);
     findWordsUseCase.execute().then((response) => {
       if (response) console.log("Busca de palavras finalizada com sucesso.");

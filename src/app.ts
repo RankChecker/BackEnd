@@ -3,15 +3,14 @@ import { createServer, Server } from "http";
 import { FindWordsController } from "./modules/rankWords/useCases/findWords/FindWordsController";
 import AppSocket from "./services/AppSocket";
 import cors from "cors";
-import puppeteer, { Browser, Page } from "puppeteer";
+import { ApiService } from "./services/apiService";
+import nodeHtmlToImage from "node-html-to-image";
 
 class App {
   app?: express.Application;
   PORT = 3001;
   server?: Server;
   findWordsController = new FindWordsController();
-  engine?: Browser;
-  page?: Page;
 
   constructor() {
     this.createApp();
@@ -24,21 +23,19 @@ class App {
     this.app.use(express.json());
     this.app.use(cors());
 
-    this.engine = await puppeteer.launch({
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--single-process",
-        "--no-zygote",
-      ],
-    });
-
-    this.page = await this.engine.newPage();
-
     this.app.get("/", (req, res) => res.json({ message: "RankChecker" }));
     this.app.get("/status", (req, res) =>
       res.json(req.app.get("searchStatus"))
     );
+    this.app.get("/search", async (req, res) => {
+      const { data } = await ApiService.get("/search?q=Iluminação");
+      const buffer = data.toString("utf8");
+      const image = await nodeHtmlToImage({
+        html: buffer,
+        type: "jpeg",
+      });
+      res.send(buffer);
+    });
     this.app.get("/restart", (req, res) => {
       req.app.set("lastSearch", null);
       req.app.set("runing", false);
@@ -48,9 +45,7 @@ class App {
 
       res.json({ message: "Status de busca reiniciado." });
     });
-    this.app.post("/search", (req, res) =>
-      this.findWordsController.handle(this.page, req, res)
-    );
+    this.app.post("/search", this.findWordsController.handle);
 
     this.app.use(
       (err: Error, req: Request, res: Response, next: NextFunction) => {
