@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { Page } from "puppeteer";
 import { FindWordsUseCase } from "./FindWordsUseCase";
 
 export class FindWordsController {
