@@ -220,19 +220,19 @@ export class FindWordsUseCase {
     );
 
     if (position !== -1) {
-      const screenshot = await nodeHtmlToImage({
-        html: buffer,
-        type: "jpeg",
-      });
-      const screenshotToBuffer =
-        typeof screenshot === "string"
-          ? Buffer.from(screenshot)
-          : (screenshot as Buffer);
-      if (screenshot)
-        this.#keywordsZip.addFile(
-          `screeshots/${keyword} - ${page}.webp`,
-          screenshotToBuffer
-        );
+      // const screenshot = await nodeHtmlToImage({
+      //   html: buffer,
+      //   type: "jpeg",
+      // });
+      // const screenshotToBuffer =
+      //   typeof screenshot === "string"
+      //     ? Buffer.from(screenshot)
+      //     : (screenshot as Buffer);
+      // if (screenshot)
+      //   this.#keywordsZip.addFile(
+      //     `screeshots/${keyword} - ${page}.webp`,
+      //     screenshotToBuffer
+      //   );
     }
 
     return {
