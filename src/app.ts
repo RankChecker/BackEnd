@@ -27,15 +27,6 @@ class App {
     this.app.get("/status", (req, res) =>
       res.json(req.app.get("searchStatus"))
     );
-    this.app.get("/search", async (req, res) => {
-      const { data } = await ApiService.get("/search?q=Iluminação");
-      const buffer = data.toString("utf8");
-      const image = await nodeHtmlToImage({
-        html: buffer,
-        type: "jpeg",
-      });
-      res.send(buffer);
-    });
     this.app.get("/restart", (req, res) => {
       req.app.set("lastSearch", null);
       req.app.set("runing", false);

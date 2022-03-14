@@ -219,21 +219,21 @@ export class FindWordsUseCase {
         keywordItem.link.includes(url)
     );
 
-    if (position !== -1) {
-      // const screenshot = await nodeHtmlToImage({
-      //   html: buffer,
-      //   type: "jpeg",
-      // });
-      // const screenshotToBuffer =
-      //   typeof screenshot === "string"
-      //     ? Buffer.from(screenshot)
-      //     : (screenshot as Buffer);
-      // if (screenshot)
-      //   this.#keywordsZip.addFile(
-      //     `screeshots/${keyword} - ${page}.webp`,
-      //     screenshotToBuffer
-      //   );
-    }
+    // if (position !== -1) {
+    // const screenshot = await nodeHtmlToImage({
+    //   html: buffer,
+    //   type: "jpeg",
+    // });
+    // const screenshotToBuffer =
+    //   typeof screenshot === "string"
+    //     ? Buffer.from(screenshot)
+    //     : (screenshot as Buffer);
+    // if (screenshot)
+    //   this.#keywordsZip.addFile(
+    //     `screeshots/${keyword} - ${page}.webp`,
+    //     screenshotToBuffer
+    //   );
+    // }
 
     return {
       position,
@@ -249,14 +249,13 @@ export class FindWordsUseCase {
     const words = this.getSearchStatus().keywords;
     excelWorkbook.generate(this.client, this.url, words);
     const buffer = await excelWorkbook.export();
-    const zipBuffer = this.#keywordsZip.toBuffer();
+    // const zipBuffer = this.#keywordsZip.toBuffer();
     const mail = new MailSend();
     const response = await mail.sendmail(
       // "financeiro.conceitopub@gmail.com,bruna.conceitopub@gmail.com",
       "wueliton.horacio@gmail.com",
       `Seu relatório está pronto - ${this.client}`,
-      Buffer.from(buffer),
-      zipBuffer
+      Buffer.from(buffer)
     );
     if (!response) {
       this.emit("error", {
