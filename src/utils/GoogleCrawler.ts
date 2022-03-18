@@ -16,7 +16,9 @@ export const newCluster = async () => {
     const { keywords, offset } = data;
     const searchTherm: string = keywords.shift();
     const newKeywords: string[] = keywords;
-    const url = `https://www.google.com/search?q=${searchTherm}&start=${offset}`;
+    const url = `https://www.google.com/search?q=${searchTherm}&start=${
+      offset * 10
+    }`;
     await sleep(15);
     const response = await page.goto(url);
 
@@ -26,10 +28,6 @@ export const newCluster = async () => {
       await cluster.close();
       return;
     }
-
-    await page.screenshot({
-      path: `${searchTherm} ${number}.png`,
-    });
 
     const buffer: any = await page.evaluate(
       () => document.documentElement.outerHTML
