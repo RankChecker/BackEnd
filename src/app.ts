@@ -5,6 +5,7 @@ import AppSocket from "./services/AppSocket";
 import cors from "cors";
 import { ApiService } from "./services/apiService";
 import nodeHtmlToImage from "node-html-to-image";
+import { runSearch } from "./modules/rankWords/useCases/findWords/FindWords";
 
 class App {
   app?: express.Application;
@@ -37,6 +38,7 @@ class App {
       res.json({ message: "Status de busca reiniciado." });
     });
     this.app.post("/search", this.findWordsController.handle);
+    this.app.get("/search", runSearch);
 
     this.app.use(
       (err: Error, req: Request, res: Response, next: NextFunction) => {
