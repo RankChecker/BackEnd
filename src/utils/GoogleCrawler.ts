@@ -71,7 +71,7 @@ export const newCluster = async () => {
       status: true,
     });
 
-    if (offset < 4)
+    if (offset < 4 && position === -1)
       cluster.queue({
         keywords: [searchTherm, ...newKeywords],
         offset: offset + 1,
