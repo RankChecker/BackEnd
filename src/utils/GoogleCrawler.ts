@@ -67,7 +67,7 @@ export const newCluster = async () => {
       position,
       searchTherm,
       url,
-      page,
+      offset,
       status: true,
     });
 
