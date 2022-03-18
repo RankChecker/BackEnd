@@ -7,6 +7,9 @@ export const newCluster = async () => {
   const cluster = await Cluster.launch({
     concurrency: Cluster.CONCURRENCY_CONTEXT,
     maxConcurrency: 1,
+    puppeteerOptions: {
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    },
   });
 
   await cluster.task(async ({ page, data }) => {
