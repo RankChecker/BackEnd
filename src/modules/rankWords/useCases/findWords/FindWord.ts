@@ -123,6 +123,9 @@ export class FindWord {
       this.#cluster?.queue({ keywords, offset: 0 });
     } else {
       global.isRuning = false;
+      global.searchStatus = {
+        message: "Nenhuma busca sendo realizada no momento.",
+      };
       await this.sendReport();
     }
   };
@@ -140,8 +143,9 @@ export class FindWord {
     global.searchStatus = {
       message: "Nenhuma busca sendo realizada no momento.",
     };
-    global.socket?.emit("searchStatus", {
-      message: "Nenhuma busca sendo realizada no momento.",
+    global.socket?.emit("error", {
+      message:
+        "Não foi possível realizar a busca, por favor, tente novamente mais tarde.",
     });
 
     await this.#cluster?.idle();
