@@ -64,6 +64,11 @@ class App {
     this.app.set("searchStatus", {
       message: "Nenhuma busca sendo realizada no momento.",
     });
+
+    global.isRuning = false;
+    global.searchStatus = {
+      message: "Nenhuma busca sendo realizada no momento.",
+    };
   }
 
   private sockets(): void {
