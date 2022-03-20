@@ -211,7 +211,7 @@ export class FindWord {
       position,
       keyword,
       link,
-      page,
+      page: page < 4 ? page : -1,
       status: true,
     };
   };
