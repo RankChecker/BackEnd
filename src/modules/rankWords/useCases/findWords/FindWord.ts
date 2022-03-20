@@ -121,7 +121,10 @@ export class FindWord {
       });
     else if (!!keywords.length) {
       this.#cluster?.queue({ keywords, offset: 0 });
-    } else await this.sendReport();
+    } else {
+      global.isRuning = false;
+      await this.sendReport();
+    }
   };
 
   /**
@@ -212,7 +215,6 @@ export class FindWord {
       link: "",
       keyword: keyword,
       page: -1,
-      status: false,
     }));
 
     global.searchStatus = {

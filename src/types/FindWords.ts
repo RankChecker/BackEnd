@@ -14,7 +14,7 @@ export interface WordPositionOnGoogle {
   keyword: string;
   link: string;
   page: number;
-  status: boolean;
+  status?: boolean;
 }
 
 export interface SearchStatusMessage {
