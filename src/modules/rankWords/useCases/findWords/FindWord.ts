@@ -20,6 +20,7 @@ export class FindWord {
   #keywords: string[];
   #rankedWords: number = 0;
   #keywordsZip = new AdmZip();
+  #totalWordsLength = 0;
 
   constructor(
     req: Request,
@@ -31,7 +32,9 @@ export class FindWord {
     this.clientName = clientName;
     this.clientUrl = clientUrl;
     this.#keywords = keywords;
+    this.#totalWordsLength = keywords.length;
     global.isRuning = true;
+    console.log(keywords);
   }
 
   async execute() {
@@ -120,13 +123,14 @@ export class FindWord {
         offset: offset + 1,
       });
     else if (!!keywords.length) {
+      console.log(keywords.length);
       this.#cluster?.queue({ keywords, offset: 0 });
     } else {
+      await this.sendReport();
       global.isRuning = false;
       global.searchStatus = {
         message: "Nenhuma busca sendo realizada no momento.",
       };
-      await this.sendReport();
     }
   };
 
@@ -240,7 +244,7 @@ export class FindWord {
    */
   changeKeyWordListAndEmit = (keyword: WordPositionOnGoogle) => {
     this.#rankedWords++;
-    const percent = (100 / this.#keywords.length) * this.#rankedWords;
+    const percent = (100 / this.#totalWordsLength) * this.#rankedWords;
     const list = global.searchStatus as SocketSearchStatus;
     const newList = list.keywords.map((keystatus) =>
       keystatus.keyword === keyword.keyword
