@@ -83,6 +83,25 @@ export class FindWord {
     /* Aguarda 15 segundos para executar a busca, para que não retorne erro 429 */
     await sleep(15);
 
+    await page.evaluateOnNewDocument(function () {
+      navigator.geolocation.getCurrentPosition = function (cb) {
+        setTimeout(() => {
+          cb({
+            coords: {
+              accuracy: 21,
+              altitude: null,
+              altitudeAccuracy: null,
+              heading: null,
+              latitude: -23.5916229,
+              longitude: -46.5929353,
+              speed: null,
+            },
+            timestamp: new Date().getTime(),
+          });
+        }, 1000);
+      };
+    });
+
     const context = page.browser().defaultBrowserContext();
     context.overridePermissions(defaultURL, ["geolocation"]);
 
