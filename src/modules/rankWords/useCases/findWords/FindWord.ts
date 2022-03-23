@@ -35,7 +35,6 @@ export class FindWord {
     this.#keywords = keywords;
     this.#totalWordsLength = keywords.length;
     global.isRuning = true;
-    console.log(keywords);
   }
 
   async execute() {
@@ -100,8 +99,6 @@ export class FindWord {
     const buffer: any = await page.evaluate(
       () => document.documentElement.outerHTML
     );
-
-    fs.writeFile("keyword.html", buffer, (error) => console.log("error"));
 
     if (!buffer) return this.setGoogleRecaptchaError();
 
@@ -205,8 +202,6 @@ export class FindWord {
       const keywordText = header.textContent;
       const link = header.closest("a");
 
-      console.log(keywordText, link);
-
       if (keywordText && link) {
         allResults.push({
           keywordText,
@@ -214,8 +209,6 @@ export class FindWord {
         });
       }
     });
-
-    console.log(allResults);
 
     const position = allResults.findIndex(
       (keywordItem) =>
