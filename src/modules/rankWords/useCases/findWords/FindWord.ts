@@ -53,7 +53,11 @@ export class FindWord {
       concurrency: Cluster.CONCURRENCY_CONTEXT,
       maxConcurrency: 1,
       puppeteerOptions: {
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--proxy-server=https=177.84.118.121:5678",
+        ],
       },
     });
 
