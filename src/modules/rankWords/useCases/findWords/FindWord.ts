@@ -83,6 +83,9 @@ export class FindWord {
     /* Aguarda 15 segundos para executar a busca, para que não retorne erro 429 */
     await sleep(15);
 
+    const context = page.browser().defaultBrowserContext();
+    context.overridePermissions(defaultURL, ["geolocation"]);
+
     await page.setGeolocation({
       latitude: -23.5916229,
       longitude: -46.5929353,
@@ -279,8 +282,8 @@ export class FindWord {
     const zipBuffer = this.#keywordsZip.toBuffer();
     const mail = new MailSend();
     const response = await mail.sendmail(
-      "financeiro.conceitopub@gmail.com",
-      // "wueliton.horacio@gmail.com",
+      // "financeiro.conceitopub@gmail.com",
+      "wueliton.horacio@gmail.com",
       `Seu relatório está pronto - ${this.clientName}`,
       Buffer.from(buffer),
       zipBuffer
