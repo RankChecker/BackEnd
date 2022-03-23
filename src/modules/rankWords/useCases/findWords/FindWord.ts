@@ -11,6 +11,7 @@ import {
 import ExcelGenerator from "../../../../services/ExcelGenerator";
 import MailSend from "../../../../services/MailSend";
 import AdmZip from "adm-zip";
+import fs from "fs";
 
 export class FindWord {
   request: Request;
@@ -88,6 +89,10 @@ export class FindWord {
       longitude: -46.5929353,
     });
 
+    await page.setUserAgent(
+      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36 OPR/38.0.2220.41"
+    );
+
     const response = await page.goto(defaultURL);
     /* Verifica se o status da requisição é diferente de 200, se positivo, define status de erro para aplicação */
     if (response.status() !== 200) return this.setGoogleRecaptchaError();
@@ -95,6 +100,8 @@ export class FindWord {
     const buffer: any = await page.evaluate(
       () => document.documentElement.outerHTML
     );
+
+    fs.writeFile("keyword.html", buffer, (error) => console.log("error"));
 
     if (!buffer) return this.setGoogleRecaptchaError();
 
@@ -185,7 +192,7 @@ export class FindWord {
   ): WordPositionOnGoogle => {
     const dom = new JSDOM(htmlPageCode);
     const document = dom.window.document;
-    const getAllHeadersOnPage = document.querySelectorAll("#search h3");
+    const getAllHeadersOnPage = document.querySelectorAll("#main h3");
     const allResults: { keywordText: string; link: string }[] = [];
 
     getAllHeadersOnPage.forEach((header) => {
@@ -198,6 +205,8 @@ export class FindWord {
       const keywordText = header.textContent;
       const link = header.closest("a");
 
+      console.log(keywordText, link);
+
       if (keywordText && link) {
         allResults.push({
           keywordText,
@@ -205,6 +214,8 @@ export class FindWord {
         });
       }
     });
+
+    console.log(allResults);
 
     const position = allResults.findIndex(
       (keywordItem) =>
@@ -275,8 +286,8 @@ export class FindWord {
     const zipBuffer = this.#keywordsZip.toBuffer();
     const mail = new MailSend();
     const response = await mail.sendmail(
-      "financeiro.conceitopub@gmail.com",
-      // "wueliton.horacio@gmail.com",
+      // "financeiro.conceitopub@gmail.com",
+      "wueliton.horacio@gmail.com",
       `Seu relatório está pronto - ${this.clientName}`,
       Buffer.from(buffer),
       zipBuffer
