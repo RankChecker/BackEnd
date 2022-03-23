@@ -83,6 +83,11 @@ export class FindWord {
     /* Aguarda 15 segundos para executar a busca, para que não retorne erro 429 */
     await sleep(15);
 
+    await page.setGeolocation({
+      latitude: -23.5916229,
+      longitude: -46.5929353,
+    });
+
     const response = await page.goto(defaultURL);
     /* Verifica se o status da requisição é diferente de 200, se positivo, define status de erro para aplicação */
     if (response.status() !== 200) return this.setGoogleRecaptchaError();
