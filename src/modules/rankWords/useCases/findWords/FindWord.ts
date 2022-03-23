@@ -76,7 +76,7 @@ export class FindWord {
 
     if (!keyword) return;
 
-    const defaultURL = `https://www.google.com/search?q=${encodeURI(
+    const defaultURL = `https://www.google.com/search?hl=pt-BR&cr=countryBR&q=${encodeURI(
       keyword
     )}&start=${start}`;
 
