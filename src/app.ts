@@ -16,23 +16,13 @@ class App {
     this.sockets();
   }
 
-  createApp() {
+  async createApp() {
     this.app = express();
     this.app.use(express.json());
     this.app.use(cors());
-    this.app.get("/", (req, res) => res.json({ message: "RankChecker" }));
-    this.app.get("/status", (req, res) =>
-      res.json(req.app.get("searchStatus"))
-    );
-    this.app.get("/restart", (req, res) => {
-      req.app.set("lastSearch", null);
-      req.app.set("runing", false);
-      req.app.set("searchStatus", {
-        message: "Nenhuma busca sendo realizada no momento.",
-      });
 
-      res.json({ message: "Status de busca reiniciado." });
-    });
+    this.app.get("/", (req, res) => res.json({ message: "RankChecker" }));
+    this.app.get("/status", (req, res) => res.json(global.searchStatus));
     this.app.post("/search", this.findWordsController.handle);
 
     this.app.use(
@@ -53,12 +43,10 @@ class App {
 
   private serverValues() {
     if (!this.app) return;
-    this.app.set("countPerPage", 0);
-    this.app.set("lastSearch", null);
-    this.app.set("runing", false);
-    this.app.set("searchStatus", {
+    global.isRuning = false;
+    global.searchStatus = {
       message: "Nenhuma busca sendo realizada no momento.",
-    });
+    };
   }
 
   private sockets(): void {

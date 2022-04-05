@@ -7,7 +7,7 @@ class AppSocket {
 
   constructor(server: Server, app: express.Application | undefined) {
     this.#io = require("socket.io")(server);
-    app?.set("socketIo", this.#io);
+    global.socket = this.#io;
     this.listen();
   }
 

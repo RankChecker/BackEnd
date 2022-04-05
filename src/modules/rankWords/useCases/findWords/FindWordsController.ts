@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
-import { FindWordsUseCase } from "./FindWordsUseCase";
+import { FindWord } from "./FindWord";
 
 export class FindWordsController {
   handle(req: Request, res: Response) {
-    if (req.app.get("runing"))
+    if (global.isRuning)
       return res.status(409).json({
         error: "Busca em progresso",
         message:
@@ -18,12 +18,8 @@ export class FindWordsController {
           "Requisição mal formatada, verifique os dados e tente novamente.",
       });
 
-    const findWordsUseCase = new FindWordsUseCase(req, client, url, keywords);
-    req.app.set("runing", true);
-    findWordsUseCase.execute().then((response) => {
-      if (response) console.log("Busca de palavras finalizada com sucesso.");
-      else console.log("Erro ao realizar a busca.");
-    });
+    const findWordsUseCase = new FindWord(req, client, url, keywords);
+    findWordsUseCase.execute();
 
     res.json({
       message: "Realizando busca",
