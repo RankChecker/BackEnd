@@ -3,7 +3,6 @@ import { Request } from "express";
 import { Cluster } from "puppeteer-cluster";
 import { sleep } from "../../../../utils/sleep";
 import {
-  ClusterData,
   SocketSearchStatus,
   TaskClusterData,
   WordPositionOnGoogle,
@@ -43,91 +42,6 @@ export class FindWord {
     this.executeSearch();
     return { message: "Success" };
   }
-
-  /**
-    Inicia um Cluster com uma instância do Browser sem o método sandbox e com o SetUID desabilitado.
-  */
-  createCluster = async (): Promise<Cluster<TaskClusterData, any>> =>
-    await Cluster.launch({
-      concurrency: Cluster.CONCURRENCY_CONTEXT,
-      maxConcurrency: 1,
-      puppeteerOptions: {
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      },
-    });
-
-  /**
-   * Definições da task que será executada para cada item na lista,
-   * verifica se um resultado foi encontrado para adicionar a próxima task na fila
-   *
-   * @example
-   * await cluster.task(clusterTaskExecution)
-   *
-   * @param {ClusterData} params  Obrigatório Contém a Página da Instância do Browser e os dados a serem lidos
-   *
-   * @returns
-   * Promise<void>
-   */
-  clusterTaskExecution = async ({ page, data }: ClusterData) => {
-    const { keywords, offset } = data;
-    const keyword = keywords.shift();
-    const start = offset * 10;
-
-    if (!keyword) return;
-
-    const defaultURL = `https://rankproxy.herokuapp.com/search?hl=pt-BR&gl=BR&q=${encodeURI(
-      keyword
-    )}&start=${start}`;
-
-    /* Aguarda 15 segundos para executar a busca, para que não retorne erro 429 */
-    await sleep(15);
-
-    const response = await ApiService.get(defaultURL);
-
-    /* Verifica se o status da requisição é diferente de 200, se positivo, define status de erro para aplicação */
-    if (response.status !== 200) return this.setGoogleRecaptchaError();
-
-    const buffer: any = response.data;
-
-    if (!buffer) return this.setGoogleRecaptchaError();
-
-    const googleKeyWordPosition = this.getWordPositionOnGoogle(
-      keyword,
-      buffer,
-      defaultURL,
-      offset
-    );
-    if (googleKeyWordPosition.position !== -1 || offset === 4)
-      this.changeKeyWordListAndEmit(googleKeyWordPosition);
-
-    if (googleKeyWordPosition.position !== -1) {
-      const screenshot = (await nodeHtmlToImage({
-        html: response.data,
-        quality: 70,
-        type: "jpeg",
-      })) as Buffer;
-      if (screenshot)
-        this.#keywordsZip.addFile(
-          `screeshots/${keyword} - ${page}.webp`,
-          screenshot
-        );
-    }
-
-    if (offset < 4 && googleKeyWordPosition.position === -1)
-      this.#cluster?.queue({
-        keywords: [keyword, ...keywords],
-        offset: offset + 1,
-      });
-    else if (!!keywords.length) {
-      this.#cluster?.queue({ keywords, offset: 0 });
-    } else {
-      await this.sendReport();
-      global.isRuning = false;
-      global.searchStatus = {
-        message: "Nenhuma busca sendo realizada no momento.",
-      };
-    }
-  };
 
   getHtmlPage = async (link: string) => {
     const domains = [
