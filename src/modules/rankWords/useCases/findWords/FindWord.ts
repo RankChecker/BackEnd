@@ -100,7 +100,7 @@ export class FindWord {
           page
         );
 
-        if (googleKeyWordPosition.position === -1 && entry < 4) return;
+        if (googleKeyWordPosition.position === -1 && entry < 4) continue;
 
         this.changeKeyWordListAndEmit(googleKeyWordPosition);
 
