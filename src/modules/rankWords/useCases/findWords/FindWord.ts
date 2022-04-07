@@ -1,10 +1,8 @@
 import { JSDOM } from "jsdom";
 import { Request } from "express";
-import { Cluster } from "puppeteer-cluster";
 import { sleep } from "../../../../utils/sleep";
 import {
   SocketSearchStatus,
-  TaskClusterData,
   WordPositionOnGoogle,
 } from "../../../../types/FindWords";
 import ExcelGenerator from "../../../../services/ExcelGenerator";
@@ -17,7 +15,6 @@ export class FindWord {
   request: Request;
   clientName: string;
   clientUrl: string;
-  #cluster?: Cluster<TaskClusterData, any>;
   #keywords: string[];
   #rankedWords: number = 0;
   #keywordsZip = new AdmZip();
@@ -108,6 +105,9 @@ export class FindWord {
           html: buffer,
           quality: 70,
           type: "jpeg",
+          puppeteerArgs: {
+            args: ["--no-sandbox", "--disable-setuid-sandbox"],
+          },
         })) as Buffer;
 
         if (screenshot)
@@ -159,9 +159,6 @@ export class FindWord {
       message:
         "Não foi possível realizar a busca, por favor, tente novamente mais tarde.",
     });
-
-    await this.#cluster?.idle();
-    await this.#cluster?.close();
   };
 
   /**
