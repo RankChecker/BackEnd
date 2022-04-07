@@ -216,6 +216,14 @@ export class FindWord {
         keywordItem.link.includes(this.clientUrl)
     );
 
+    console.log({
+      position,
+      keyword,
+      link,
+      page: page < 4 ? page : -1,
+      status: true,
+    });
+
     return {
       position,
       keyword,
