@@ -1,27 +1,25 @@
 import { JSDOM } from "jsdom";
 import { Request } from "express";
-import { Cluster } from "puppeteer-cluster";
 import { sleep } from "../../../../utils/sleep";
 import {
-  ClusterData,
   SocketSearchStatus,
-  TaskClusterData,
   WordPositionOnGoogle,
 } from "../../../../types/FindWords";
 import ExcelGenerator from "../../../../services/ExcelGenerator";
 import MailSend from "../../../../services/MailSend";
 import AdmZip from "adm-zip";
-import fs from "fs";
+import { ApiService } from "../../../../services/apiService";
+import nodeHtmlToImage from "node-html-to-image";
 
 export class FindWord {
   request: Request;
   clientName: string;
   clientUrl: string;
-  #cluster?: Cluster<TaskClusterData, any>;
   #keywords: string[];
   #rankedWords: number = 0;
   #keywordsZip = new AdmZip();
   #totalWordsLength = 0;
+  #domain: number | undefined = undefined;
 
   constructor(
     req: Request,
@@ -38,132 +36,111 @@ export class FindWord {
   }
 
   async execute() {
-    this.#cluster = await this.createCluster();
-    this.#cluster.task(this.clusterTaskExecution);
-    this.#cluster?.queue({ keywords: this.#keywords, offset: 0 });
-    this.setInitialStateForKeyWordsListStatus();
+    this.executeSearch();
     return { message: "Success" };
   }
 
-  /**
-    Inicia um Cluster com uma instância do Browser sem o método sandbox e com o SetUID desabilitado.
-  */
-  createCluster = async (): Promise<Cluster<TaskClusterData, any>> =>
-    await Cluster.launch({
-      concurrency: Cluster.CONCURRENCY_CONTEXT,
-      maxConcurrency: 1,
-      puppeteerOptions: {
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      },
-    });
+  getHtmlPage = async (link: string) => {
+    const domains = [
+      "https://google.com.br",
+      "https://rank-proxy-two.herokuapp.com",
+      "https://rank-proxy-third.herokuapp.com",
+      "https://rankproxy.herokuapp.com",
+    ];
 
-  /**
-   * Definições da task que será executada para cada item na lista,
-   * verifica se um resultado foi encontrado para adicionar a próxima task na fila
-   *
-   * @example
-   * await cluster.task(clusterTaskExecution)
-   *
-   * @param {ClusterData} params  Obrigatório Contém a Página da Instância do Browser e os dados a serem lidos
-   *
-   * @returns
-   * Promise<void>
-   */
-  clusterTaskExecution = async ({ page, data }: ClusterData) => {
-    const { keywords, offset } = data;
-    const keyword = keywords.shift();
-    const start = offset * 10;
+    let data;
 
-    if (!keyword) return;
+    for await (const [key, value] of Array.from(Array(3).entries())) {
+      const domain = this.refreshDomain(domains.length);
+      const url = `${domains[domain]}${link}`;
 
-    const defaultURL = `https://www.google.com/search?hl=pt-BR&cr=countryBR&q=${encodeURI(
-      keyword
-    )}&start=${start}`;
+      const query = await ApiService.get(url);
 
-    /* Aguarda 15 segundos para executar a busca, para que não retorne erro 429 */
-    await sleep(15);
+      if (query.status !== 200) return;
 
-    await page.evaluateOnNewDocument(function () {
-      navigator.geolocation.getCurrentPosition = function (cb) {
-        setTimeout(() => {
-          cb({
-            coords: {
-              accuracy: 21,
-              altitude: null,
-              altitudeAccuracy: null,
-              heading: null,
-              latitude: -23.5916229,
-              longitude: -46.5929353,
-              speed: null,
-            },
-            timestamp: new Date().getTime(),
-          });
-        }, 1000);
-      };
-    });
+      if (key === 4) {
+        data = { message: "Error" };
+        return;
+      }
 
-    const context = page.browser().defaultBrowserContext();
-    context.overridePermissions(defaultURL, ["geolocation"]);
-
-    await page.setGeolocation({
-      latitude: -23.5916229,
-      longitude: -46.5929353,
-    });
-
-    await page.setUserAgent(
-      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36 OPR/38.0.2220.41"
-    );
-
-    const response = await page.goto(defaultURL);
-    /* Verifica se o status da requisição é diferente de 200, se positivo, define status de erro para aplicação */
-    if (response.status() !== 200) return this.setGoogleRecaptchaError();
-
-    const buffer: any = await page.evaluate(
-      () => document.documentElement.outerHTML
-    );
-
-    if (!buffer) return this.setGoogleRecaptchaError();
-
-    const googleKeyWordPosition = this.getWordPositionOnGoogle(
-      keyword,
-      buffer,
-      defaultURL,
-      offset
-    );
-    if (googleKeyWordPosition.position !== -1 || offset === 4)
-      this.changeKeyWordListAndEmit(googleKeyWordPosition);
-
-    if (googleKeyWordPosition.position !== -1) {
-      const screenshot = await page.screenshot({
-        fullPage: true,
-        quality: 70,
-        type: "webp",
-      });
-      const screenshotToBuffer =
-        typeof screenshot === "string" ? Buffer.from(screenshot) : screenshot;
-      if (screenshot)
-        this.#keywordsZip.addFile(
-          `screeshots/${keyword} - ${page}.webp`,
-          screenshotToBuffer
-        );
+      data = query.data;
+      break;
     }
 
-    if (offset < 4 && googleKeyWordPosition.position === -1)
-      this.#cluster?.queue({
-        keywords: [keyword, ...keywords],
-        offset: offset + 1,
-      });
-    else if (!!keywords.length) {
-      console.log(keywords.length);
-      this.#cluster?.queue({ keywords, offset: 0 });
-    } else {
-      await this.sendReport();
-      global.isRuning = false;
-      global.searchStatus = {
-        message: "Nenhuma busca sendo realizada no momento.",
-      };
-    }
+    return data;
   };
+
+  refreshDomain = (domainsLength: number) => {
+    if (!this.#domain) this.#domain = 0;
+    else this.#domain = this.#domain === domainsLength ? 0 : this.#domain++;
+    return this.#domain;
+  };
+
+  executeSearch = async () => {
+    this.setInitialStateForKeyWordsListStatus();
+
+    const linksList = this.createEndpoints(this.#keywords);
+    for await (const [key, { keyword, links }] of linksList.entries()) {
+      for await (const [entry, { link, page, googleLink }] of links.entries()) {
+        if (!keyword) return;
+
+        await sleep(15);
+
+        const buffer: any = await this.getHtmlPage(link);
+
+        if (!!buffer?.message) return this.setGoogleRecaptchaError();
+
+        const googleKeyWordPosition = this.getWordPositionOnGoogle(
+          keyword,
+          buffer,
+          googleLink,
+          page
+        );
+
+        if (googleKeyWordPosition.position === -1 && entry < 4) continue;
+
+        this.changeKeyWordListAndEmit(googleKeyWordPosition);
+
+        const screenshot = (await nodeHtmlToImage({
+          html: buffer,
+          quality: 70,
+          type: "jpeg",
+          puppeteerArgs: {
+            args: ["--no-sandbox", "--disable-setuid-sandbox"],
+          },
+        })) as Buffer;
+
+        if (screenshot)
+          this.#keywordsZip.addFile(
+            `screeshots/${keyword} - ${page}.webp`,
+            screenshot
+          );
+
+        break;
+      }
+    }
+
+    await this.sendReport();
+
+    global.isRuning = false;
+    global.searchStatus = {
+      message: "Nenhuma busca sendo realizada no momento.",
+    };
+  };
+
+  createEndpoints = (keywords: string[]) =>
+    keywords.map((keyword) => ({
+      keyword,
+      links: Array.from(Array(4).keys()).map((key) => ({
+        link: `/search?hl=pt-BR&gl=BR&q=${encodeURI(keyword)}&start=${
+          key * 10
+        }`,
+        googleLink: `https://google.com/search?hl=pt-BR&gl=BR&q=${encodeURI(
+          keyword
+        )}&start=${key * 10}`,
+        page: key * 10,
+      })),
+    }));
 
   /**
    * Define um status de erro na aplicação, informando que uma nova busca
@@ -182,9 +159,6 @@ export class FindWord {
       message:
         "Não foi possível realizar a busca, por favor, tente novamente mais tarde.",
     });
-
-    await this.#cluster?.idle();
-    await this.#cluster?.close();
   };
 
   /**
@@ -238,6 +212,14 @@ export class FindWord {
           keywordItem.link.includes(this.clientUrl)) ||
         keywordItem.link.includes(this.clientUrl)
     );
+
+    console.log({
+      position,
+      keyword,
+      link,
+      page: page < 4 ? page : -1,
+      status: true,
+    });
 
     return {
       position,
@@ -301,8 +283,8 @@ export class FindWord {
     const zipBuffer = this.#keywordsZip.toBuffer();
     const mail = new MailSend();
     const response = await mail.sendmail(
-      "financeiro.conceitopub@gmail.com",
-      // "wueliton.horacio@gmail.com",
+      // "financeiro.conceitopub@gmail.com",
+      "wueliton.horacio@gmail.com",
       `Seu relatório está pronto - ${this.clientName}`,
       Buffer.from(buffer),
       zipBuffer
