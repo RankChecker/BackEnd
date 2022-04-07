@@ -11,7 +11,8 @@ import {
 import ExcelGenerator from "../../../../services/ExcelGenerator";
 import MailSend from "../../../../services/MailSend";
 import AdmZip from "adm-zip";
-import fs from "fs";
+import { ApiService } from "../../../../services/apiService";
+import nodeHtmlToImage from "node-html-to-image";
 
 export class FindWord {
   request: Request;
@@ -22,6 +23,7 @@ export class FindWord {
   #rankedWords: number = 0;
   #keywordsZip = new AdmZip();
   #totalWordsLength = 0;
+  #domain: number | undefined = undefined;
 
   constructor(
     req: Request,
@@ -38,10 +40,7 @@ export class FindWord {
   }
 
   async execute() {
-    this.#cluster = await this.createCluster();
-    this.#cluster.task(this.clusterTaskExecution);
-    this.#cluster?.queue({ keywords: this.#keywords, offset: 0 });
-    this.setInitialStateForKeyWordsListStatus();
+    this.executeSearch();
     return { message: "Success" };
   }
 
@@ -76,51 +75,19 @@ export class FindWord {
 
     if (!keyword) return;
 
-    const defaultURL = `https://www.google.com/search?hl=pt-BR&cr=countryBR&q=${encodeURI(
+    const defaultURL = `https://rankproxy.herokuapp.com/search?hl=pt-BR&gl=BR&q=${encodeURI(
       keyword
     )}&start=${start}`;
 
     /* Aguarda 15 segundos para executar a busca, para que não retorne erro 429 */
     await sleep(15);
 
-    await page.evaluateOnNewDocument(function () {
-      navigator.geolocation.getCurrentPosition = function (cb) {
-        setTimeout(() => {
-          cb({
-            coords: {
-              accuracy: 21,
-              altitude: null,
-              altitudeAccuracy: null,
-              heading: null,
-              latitude: -23.5916229,
-              longitude: -46.5929353,
-              speed: null,
-            },
-            timestamp: new Date().getTime(),
-          });
-        }, 1000);
-      };
-    });
+    const response = await ApiService.get(defaultURL);
 
-    const context = page.browser().defaultBrowserContext();
-    context.overridePermissions(defaultURL, ["geolocation"]);
-
-    await page.setGeolocation({
-      latitude: -23.5916229,
-      longitude: -46.5929353,
-    });
-
-    await page.setUserAgent(
-      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36 OPR/38.0.2220.41"
-    );
-
-    const response = await page.goto(defaultURL);
     /* Verifica se o status da requisição é diferente de 200, se positivo, define status de erro para aplicação */
-    if (response.status() !== 200) return this.setGoogleRecaptchaError();
+    if (response.status !== 200) return this.setGoogleRecaptchaError();
 
-    const buffer: any = await page.evaluate(
-      () => document.documentElement.outerHTML
-    );
+    const buffer: any = response.data;
 
     if (!buffer) return this.setGoogleRecaptchaError();
 
@@ -134,17 +101,15 @@ export class FindWord {
       this.changeKeyWordListAndEmit(googleKeyWordPosition);
 
     if (googleKeyWordPosition.position !== -1) {
-      const screenshot = await page.screenshot({
-        fullPage: true,
+      const screenshot = (await nodeHtmlToImage({
+        html: response.data,
         quality: 70,
-        type: "webp",
-      });
-      const screenshotToBuffer =
-        typeof screenshot === "string" ? Buffer.from(screenshot) : screenshot;
+        type: "jpeg",
+      })) as Buffer;
       if (screenshot)
         this.#keywordsZip.addFile(
           `screeshots/${keyword} - ${page}.webp`,
-          screenshotToBuffer
+          screenshot
         );
     }
 
@@ -154,7 +119,6 @@ export class FindWord {
         offset: offset + 1,
       });
     else if (!!keywords.length) {
-      console.log(keywords.length);
       this.#cluster?.queue({ keywords, offset: 0 });
     } else {
       await this.sendReport();
@@ -164,6 +128,105 @@ export class FindWord {
       };
     }
   };
+
+  getHtmlPage = async (link: string) => {
+    const domains = [
+      "https://google.com.br",
+      "https://rank-proxy-two.herokuapp.com",
+      "https://rank-proxy-third.herokuapp.com",
+      "https://rankproxy.herokuapp.com",
+    ];
+
+    let data;
+
+    for await (const [key, value] of Array.from(Array(3).entries())) {
+      const domain = this.refreshDomain(domains.length);
+      const url = `${domains[domain]}${link}`;
+
+      const query = await ApiService.get(url);
+
+      if (query.status !== 200) return;
+
+      if (key === 4) {
+        data = { message: "Error" };
+        return;
+      }
+
+      data = query.data;
+      break;
+    }
+
+    return data;
+  };
+
+  refreshDomain = (domainsLength: number) => {
+    if (!this.#domain) this.#domain = 0;
+    else this.#domain = this.#domain === domainsLength ? 0 : this.#domain++;
+    return this.#domain;
+  };
+
+  executeSearch = async () => {
+    this.setInitialStateForKeyWordsListStatus();
+
+    const linksList = this.createEndpoints(this.#keywords);
+    for await (const [key, { keyword, links }] of linksList.entries()) {
+      for await (const [entry, { link, page, googleLink }] of links.entries()) {
+        if (!keyword) return;
+
+        await sleep(15);
+
+        const buffer: any = await this.getHtmlPage(link);
+
+        if (!!buffer?.message) return this.setGoogleRecaptchaError();
+
+        const googleKeyWordPosition = this.getWordPositionOnGoogle(
+          keyword,
+          buffer,
+          googleLink,
+          page
+        );
+
+        if (googleKeyWordPosition.position === -1 && entry < 4) return;
+
+        this.changeKeyWordListAndEmit(googleKeyWordPosition);
+
+        const screenshot = (await nodeHtmlToImage({
+          html: buffer,
+          quality: 70,
+          type: "jpeg",
+        })) as Buffer;
+
+        if (screenshot)
+          this.#keywordsZip.addFile(
+            `screeshots/${keyword} - ${page}.webp`,
+            screenshot
+          );
+
+        break;
+      }
+    }
+
+    await this.sendReport();
+
+    global.isRuning = false;
+    global.searchStatus = {
+      message: "Nenhuma busca sendo realizada no momento.",
+    };
+  };
+
+  createEndpoints = (keywords: string[]) =>
+    keywords.map((keyword) => ({
+      keyword,
+      links: Array.from(Array(4).keys()).map((key) => ({
+        link: `/search?hl=pt-BR&gl=BR&q=${encodeURI(keyword)}&start=${
+          key * 10
+        }`,
+        googleLink: `https://google.com/search?hl=pt-BR&gl=BR&q=${encodeURI(
+          keyword
+        )}&start=${key * 10}`,
+        page: key * 10,
+      })),
+    }));
 
   /**
    * Define um status de erro na aplicação, informando que uma nova busca

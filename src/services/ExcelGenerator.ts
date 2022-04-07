@@ -47,7 +47,7 @@ class ExcelGenerator {
 
     words.forEach(({ keyword, page, link, position }) => {
       this.worksheet.addRow({
-        keyword: { text: keyword, hyperlink: link },
+        keyword: !!link ? { text: keyword, hyperlink: link } : keyword,
         page: page >= 0 ? page + 1 : "Não encontrado",
         position: position >= 0 ? position + 1 : "Não encontrado",
       });
@@ -55,8 +55,6 @@ class ExcelGenerator {
   }
 
   async export() {
-    const filepath = path.join(__dirname, "../../", "report", "report.xlsx");
-    await this.workbook.xlsx.writeFile(filepath);
     const buffer = await this.workbook.xlsx.writeBuffer();
     return buffer;
   }
